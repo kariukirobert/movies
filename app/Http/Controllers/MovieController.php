@@ -2,38 +2,41 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Movie;
-use GuzzleHttp\Client;
-use Illuminate\Http\Request;
-use App\Http\Abstracts\MovieAbstractClass;
+use App\Services\MovieService;
+use App\Http\Controllers\Controller;
+use App\Http\Repositories\MovieRepository;
 
-class MovieController extends MovieAbstractClass //implement movie abstract class
+class MovieController extends Controller
 {
+    protected $movieRepository;
+    /**
+     * Class constructor.
+     */
+    public function __construct(MovieRepository $movieRepository)
+    {
+        $this->tmdb_api_key = env('TMDB_API_KEY'); //get the api key to tmdb
+        $this->tmdb_url = "https://api.themoviedb.org/3/movie";
+        $this->tmdb_lang = "language=en-US";
+
+        $this->movieRepository= $movieRepository;
+    }
 
     public function importTMDBMovies()
     {
-        //https://api.themoviedb.org/3/movie/popular?api_key=a7b7dbaf09db337d84845049172edb7a&language=en-US&page=1
-        $tmdb_url = $this->tmdb_url;
-        $tmdb_api_key = $this->tmdb_api_key;
-        $tmdb_lang = $this->tmdb_lang;
+        // Get movies from tmdb database
+        $all_movies = MovieService::getTMDBMovies($this->tmdb_url, $this->tmdb_api_key, $this->tmdb_lang);
 
-        $all_movies = []; //create an array to store all the movies
-        for ($page=1; $page <= 5; $page++) {
-            //get the movies from tmdb
-            $tmdb_endpoint = $tmdb_url."/popular?api_key=".$tmdb_api_key."&".$tmdb_lang."&page=".$page;
+        // Sort movies
+        $sorted_movies = MovieService::sortMovies($all_movies);
 
-            $client = new Client();
-            $res = $client->request('GET', $tmdb_endpoint);
+        // Format records that will be saved
+        $formarted_data = MovieService::formatDataToSave($sorted_movies);
 
-            $results = json_decode($res->getBody(), true);
-            $all_movies = array_merge($all_movies, $results['results']);
-        }
+        # Store to the database
+       $this->movieRepository->storeMovies($formarted_data);
 
-        $sorted = collect($all_movies)->sortByDesc(function ($movie, $key) {
-            return $movie['vote_average'].$movie['vote_count'];
-        });
-
-        return $sorted->values()->all();
+       // return response
+       return response()->json('Imported successfully', 200);
     }
 
 }
