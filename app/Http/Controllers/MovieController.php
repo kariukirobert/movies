@@ -14,7 +14,7 @@ class MovieController extends Controller
      */
     public function __construct(MovieRepository $movieRepository)
     {
-        $this->tmdb_api_key = env('TMDB_API_KEY'); //get the api key to tmdb
+        $this->tmdb_api_key = config('app.tmdb.api_key'); //get the api key to tmdb
         $this->tmdb_url = "https://api.themoviedb.org/3/movie";
         $this->tmdb_lang = "language=en-US";
 
