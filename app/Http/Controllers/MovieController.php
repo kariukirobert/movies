@@ -17,9 +17,7 @@ class MovieController extends MovieAbstractClass //implement movie abstract clas
         $tmdb_api_key = $this->tmdb_api_key;
         $tmdb_lang = $this->tmdb_lang;
 
-
-        $all_movies = []; //create an array to store all the movies from all pages
-
+        $all_movies = []; //create an array to store all the movies
         for ($page=1; $page <= 5; $page++) {
             //get the movies from tmdb
             $tmdb_endpoint = $tmdb_url."/popular?api_key=".$tmdb_api_key."&".$tmdb_lang."&page=".$page;
@@ -28,13 +26,14 @@ class MovieController extends MovieAbstractClass //implement movie abstract clas
             $res = $client->request('GET', $tmdb_endpoint);
 
             $results = json_decode($res->getBody(), true);
-            $all_movies[] = $results;
+            $all_movies = array_merge($all_movies, $results['results']);
         }
 
-        return $all_movies;
+        $sorted = collect($all_movies)->sortByDesc(function ($movie, $key) {
+            return $movie['vote_average'].$movie['vote_count'];
+        });
 
-
-        // dd($tmdb_endpoint);
+        return $sorted->values()->all();
     }
 
 }
